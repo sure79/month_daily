@@ -2,19 +2,22 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>상세 운세 (양력·음력 생일 + 0~21 전체 케이스)</title>
+  <title>해운(A/B) 점수 + 일별 풀이 + 곡선 그래프</title>
   <!-- React, ReactDOM (개발 버전) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <!-- Babel Standalone: JSX 트랜스파일링 -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Tailwind (옵션) -->
+  <!-- Tailwind CSS (옵션) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
   <div id="root" class="max-w-screen-lg mx-auto py-8 px-4"></div>
 
   <script type="text/babel">
+
     /************************************************************
      * Card 컴포넌트 (Tailwind)
      ************************************************************/
@@ -43,11 +46,53 @@
     };
 
     /************************************************************
-     * 이름 -> 숫자 매핑 (예시)
-     * 실제 사용 시 원하는 이름/문자에 대한 매핑을 자유롭게 확장
+     * 4개 순환 [A/B → 점수] 매핑 표
+     * 질문에서 주신 내용 그대로
+     *  - 표에 없는 A/B는 기본 50점
+     ************************************************************/
+    // 첫번째 순환
+    // 0/8 (85점), 1/9 (80점), 2/10 (82점), 3/11 (78점), 4/12 (75점),
+    // 5/13 (70점), 6/14 (68점), 7/15 (65점), 8/16 (60점), 9/17 (55점)
+    const firstCycle = {
+      "0/8": 85,  "1/9": 80,   "2/10": 82,  "3/11": 78,  "4/12": 75,
+      "5/13": 70, "6/14": 68,  "7/15": 65,  "8/16": 60,  "9/17": 55
+    };
+    // 두번째 순환
+    // 0/7 (88점), 1/8 (85점), 2/9 (83점), 3/10 (85점), 4/11 (80점),
+    // 5/12 (75점), 6/13 (72점), 7/14 (68점), 8/15 (65점), 9/16 (60점)
+    const secondCycle = {
+      "0/7": 88,  "1/8": 85,   "2/9": 83,   "3/10": 85,  "4/11": 80,
+      "5/12": 75, "6/13": 72,  "7/14": 68,  "8/15": 65,  "9/16": 60
+    };
+    // 세번째 순환
+    // 0/6 (82점), 1/7 (80점), 2/8 (83점), 3/9 (85점), 4/10 (82점),
+    // 5/11 (78점), 6/12 (75점), 7/13 (70점), 8/14 (68점), 9/15 (65점)
+    const thirdCycle = {
+      "0/6": 82,  "1/7": 80,   "2/8": 83,   "3/9": 85,   "4/10": 82,
+      "5/11": 78, "6/12": 75,  "7/13": 70,  "8/14": 68,  "9/15": 65
+    };
+    // 네번째 순환
+    // 0/5 (78점), 1/6 (75점), 2/7 (77점), 3/8 (80점), 4/9 (78점),
+    // 5/10 (75점), 6/11 (73점), 7/12 (70점), 8/13 (68점), 9/14 (65점)
+    const fourthCycle = {
+      "0/5": 78,  "1/6": 75,   "2/7": 77,   "3/8": 80,   "4/9": 78,
+      "5/10": 75, "6/11": 73,  "7/12": 70,  "8/13": 68,  "9/14": 65
+    };
+
+    // 여러 표를 한 객체로 통합(중복 key가 있으면 나중값이 우선이지만
+    // 여기서는 겹치는 내용이 없으므로 문제 없음)
+    const customScoreTable = {
+      ...firstCycle,
+      ...secondCycle,
+      ...thirdCycle,
+      ...fourthCycle
+    };
+
+    /************************************************************
+     * 이름 -> 숫자 매핑 (예시) : '강력한 기운' 체크용
      ************************************************************/
     const nameToNumberMap = {
-         '은': 2,
+      '은': 2,
       // 3번
       '민': 3, '임': 3, '노': 3, '모': 3, '삼': 3, '묵': 3,
       '문': 3, '미': 3, '누': 3, '흠': 3, '움': 3, '점': 3,
@@ -83,8 +128,8 @@
       '병': 8, '열': 8, '비': 8, '양': 8, '백': 8, '승': 8, '옥': 8,
       '을': 8, '상': 8, '오': 8, '흥': 8, '거': 8, '권': 8, '형': 8,
       '영': 8, '범': 8, '고': 8, '배': 8, '랑': 8, '빛': 8, '결': 8,
-      '복': 8, '환': 8, '인': 8, '란': 8, '빈': 8, '완': 8, '린': 8,
-      '극': 8, '본': 8, '벼': 8, '의': 8, '검': 8, '황': 8,
+      '복': 8, '환': 8, '인': 8, '린': 8, '극': 8, '본': 8, '벼': 8,
+      '의': 8, '검': 8, '황': 8,
       // 9번
       '순': 9, '서': 9, '선': 9, '여': 9, '녀': 9, '존': 9, '회': 9,
       '지': 9, '향': 9, '장': 9, '제': 9, '심': 9, '재': 9, '성': 9,
@@ -101,23 +146,7 @@
       '균': 11, '총': 11, '휘': 11, '시': 11, '필': 11
     };
 
-    /************************************************************
-     * 해운값 계산(A/B) : (year+month+day)
-     ************************************************************/
-    function calculateHaeun(year, month, day) {
-      const total = parseInt(year) + parseInt(month) + parseInt(day);
-      let lastTwo = total % 100;
-      let fv = (lastTwo > 21) ? (lastTwo % 10) : lastTwo;
-      let sum = 0;
-      for (let c of String(total)) {
-        sum += parseInt(c, 10);
-      }
-      return `${fv}/${sum}`;
-    }
-
-    /************************************************************
-     * 이름 -> 사주번호 (ex: [3,10]) 중복 제거 & 정렬
-     ************************************************************/
+    // 이름 => 사주번호 (중복 제거 & 정렬)
     function calculateNameNumbers(userName) {
       const numbers = [];
       for (let char of userName) {
@@ -128,8 +157,26 @@
     }
 
     /************************************************************
-     * 7개 카테고리: health, move, exam, pass, love, wealth, caution
-     * 0~21 모든 숫자 케이스 (상세)
+     * 해운(A/B) 계산
+     * (year+month+day) → total
+     * A = (total % 100이 21보다 크면 % 10, 아니면 그대로)
+     * B = 자리수 합
+     ************************************************************/
+    function calculateHaeun(year, month, day) {
+      const total = parseInt(year, 10) + parseInt(month, 10) + parseInt(day, 10);
+      let lastTwo = total % 100;
+      let A = (lastTwo > 21) ? (lastTwo % 10) : lastTwo;
+      let sumDigits = 0;
+      for (let c of String(total)) {
+        sumDigits += parseInt(c, 10);
+      }
+      let B = sumDigits;
+      return `${A}/${B}`;
+    }
+
+    /************************************************************
+     * 0~21번 타로/수비학 스타일의 "풀이" (기존 예시 전체)
+     * getFortuneByNumber(num)
      ************************************************************/
     function getFortuneByNumber(num) {
       const fortune = {
@@ -145,223 +192,223 @@
 
       switch (num) {
         case 0: // 광대
-          fortune.health.push('주변 환경으로 인한 피로나 무기력에 빠질 수 있음. 면역력 관리 필요');
-          fortune.move.push('예상치 못한 짧은 이동에서 기쁨 찾을 수 있지만, 준비 부족 시 사고 우려');
-          fortune.exam.push('흥미 위주의 학습 성향, 집중력이 떨어질 수 있으니 계획적 공부 필요');
-          fortune.pass.push('즉흥적 지원은 합격 가능성 낮음, 차분한 준비가 중요');
-          fortune.love.push('가벼운 만남이나 호감이 생길 수 있으나 깊은 관계로 발전하기 쉽지 않음');
-          fortune.wealth.push('충동구매 위험, 계획적 소비 필수');
-          fortune.caution.push('즉흥적, 충동적 결정 피하기. 사전 조사나 준비가 필수');
+          fortune.health.push('주변 환경으로 인한 피로나 무기력 주의');
+          fortune.move.push('즉흥적 이동 시 작은 즐거움, 사고 조심');
+          fortune.exam.push('흥미 위주 학습, 집중력 저하 가능');
+          fortune.pass.push('즉흥 지원 시 합격 가능성 낮음');
+          fortune.love.push('가벼운 만남, 깊게 발전 어려움');
+          fortune.wealth.push('충동 구매 주의');
+          fortune.caution.push('충동적 결정 피하기');
           break;
 
         case 1: // 마법사
-          fortune.health.push('두통, 편두통, 혈압 관련 주의. 스트레스성 질환 경계');
-          fortune.move.push('단거리 이동(출장, 여행)에 유리, 새로운 정보나 인연을 만날 수 있음');
-          fortune.exam.push('새로운 분야 학습 운이 좋아, 아이디어가 풍부해짐');
-          fortune.pass.push('특히 기술직이나 창의력 필요한 시험에서 합격운 상승');
-          fortune.love.push('지적 대화로 끌림 생길 수 있음, 매력적 말솜씨로 호감도↑');
-          fortune.wealth.push('창의력·기술로 재물 운이 열림, 작은 투자도 이득 가능');
-          fortune.caution.push('자신감 과잉으로 인한 실수, 말실수 주의');
+          fortune.health.push('두통, 혈압, 스트레스성 질환 주의');
+          fortune.move.push('단거리 이동 시 좋은 인연 만날 수 있음');
+          fortune.exam.push('새로운 분야 학습운 상승, 아이디어 풍부');
+          fortune.pass.push('창의성 필요한 시험 합격 운');
+          fortune.love.push('지적 대화로 매력 어필 가능');
+          fortune.wealth.push('기술·창의력으로 재물 기회');
+          fortune.caution.push('자신감 과잉, 말실수 주의');
           break;
 
         case 2: // 여사제
-          fortune.health.push('위장, 소화기, 여성질환 주의. 긴장성 두통이나 신경성 질환도 가능');
-          fortune.move.push('이동보다는 정적인 환경이 유리, 마음의 안정 필요');
-          fortune.exam.push('심리적 압박 높으므로, 차분한 자기관리와 멘탈 케어 필수');
-          fortune.pass.push('결과가 늦어지거나 답답하게 느낄 수 있으나, 내실을 다지면 성과 가능');
-          fortune.love.push('비밀스럽거나 조용한 사랑. 짝사랑이나 은밀한 만남 가능');
-          fortune.wealth.push('예상 못한 지출, 비상금 준비 필요. 저축 습관이 행운 열쇠');
-          fortune.caution.push('은밀한 비밀 노출, 내면 불안. 직관만 믿지 말고 이성적 판단 병행');
+          fortune.health.push('소화기, 여성질환, 긴장성 두통 주의');
+          fortune.move.push('정적인 환경이 유리');
+          fortune.exam.push('심리 압박 높으니 멘탈 관리 필수');
+          fortune.pass.push('결과가 늦어 답답해도 내실 다지면 성과');
+          fortune.love.push('짝사랑, 비밀연애 가능');
+          fortune.wealth.push('예상 못한 지출, 비상금 필요');
+          fortune.caution.push('불안·비밀 노출, 이성적 판단 필요');
           break;
 
         case 3: // 여황제
-          fortune.health.push('자궁·난소 등 여성 질환, 호르몬 문제 주의. 피부 관리도 필요');
-          fortune.move.push('원거리나 해외 이동은 즐거움과 성과를 동시에 가져올 수 있음');
-          fortune.exam.push('예술, 디자인, 창작 분야 시험운 상승. 창의적 표현에 능함');
-          fortune.pass.push('취미·특기 살린 시험 합격 유력. 미용, 패션, 예술 쪽 호조');
-          fortune.love.push('풍요롭고 달콤한 연애운, 이성에게 매력 어필↑');
-          fortune.wealth.push('미용·창작·서비스 업종에 이득. 쇼핑욕구↑, 사치 주의');
-          fortune.caution.push('과소비, 허영심으로 인한 낭비 가능. 타인의 시샘도 경계');
+          fortune.health.push('호르몬·피부 관리 필요');
+          fortune.move.push('원거리 이동에서 즐거움·성과 동시 가능');
+          fortune.exam.push('예술·디자인 시험운 상승');
+          fortune.pass.push('미용·패션·예술 분야 합격 운');
+          fortune.love.push('풍요롭고 달콤한 사랑');
+          fortune.wealth.push('창작·서비스분야 재물운, 과소비 주의');
+          fortune.caution.push('허영심, 과소비, 타인 시샘 경계');
           break;
 
         case 4: // 황제
-          fortune.health.push('심장, 혈압, 당뇨 주의. 과로나 스트레스 관리 중요');
-          fortune.move.push('업무나 사업 목적의 이동에 행운. 협상이나 계약에서 유리');
-          fortune.exam.push('관리직·공무원·리더십 시험운 좋음. 책임감 있는 자세 요구');
-          fortune.pass.push('노력한 만큼 합격 가능. 실무나 현장 경험 도움 됨');
-          fortune.love.push('책임감과 현실적 감각이 어우러진 만남, 안정감↑');
-          fortune.wealth.push('사업, 투자에서 성과. 권위나 지위로 인한 수익 발생');
-          fortune.caution.push('권위의식, 독선, 고집 주의. 팀원과의 협력 태도 필요');
+          fortune.health.push('심장·혈압·당뇨 주의, 스트레스 관리');
+          fortune.move.push('사업·업무 목적 이동에 유리');
+          fortune.exam.push('관리직·공무원 시험운 강세');
+          fortune.pass.push('노력한 만큼 합격 가능');
+          fortune.love.push('책임감, 현실적인 사랑');
+          fortune.wealth.push('사업·투자에서 성과');
+          fortune.caution.push('독선, 권위의식, 고집 주의');
           break;
 
         case 5: // 교황
-          fortune.health.push('목·갑상선 질환, 호흡기 문제 주의. 알레르기성 질환 가능성');
-          fortune.move.push('교육, 종교 관련 장소 이동운 유리. 세미나, 강연 참여 추천');
-          fortune.exam.push('학문적·이론적 시험에 운이 좋음. 꾸준한 학습이 성과 높임');
-          fortune.pass.push('보수적·전통적 분야(교직, 종교학 등) 합격 가능성↑');
-          fortune.love.push('정신적 교감과 신뢰가 중요한 관계 형성');
-          fortune.wealth.push('조언·가르침으로 금전 얻을 수 있음. 꾸준한 저축·투자 유리');
-          fortune.caution.push('독선적 태도, 지나친 보수성 주의. 타인의 의견도 수용 필요');
+          fortune.health.push('목·호흡기·알레르기성 질환 주의');
+          fortune.move.push('교육·종교 관련 장소에 유리');
+          fortune.exam.push('학문적·이론적 시험에 운 상승');
+          fortune.pass.push('교직·전통 분야 합격 가능성↑');
+          fortune.love.push('정신적 교감 중시');
+          fortune.wealth.push('가르침·조언으로 금전 흐름 발생');
+          fortune.caution.push('보수성, 독선적 태도 주의');
           break;
 
         case 6: // 연인
-          fortune.health.push('장, 소화기관, 혈액순환 문제 주의. 감정 기복이 건강에 영향');
-          fortune.move.push('가벼운 여행, 연인과의 데이트 이동운 좋음');
-          fortune.exam.push('팀 공부나 스터디 그룹에 유리, 협력·공유로 성과↑');
-          fortune.pass.push('협업·커뮤니케이션이 중요한 시험에서 합격 가능성 상승');
-          fortune.love.push('새로운 인연, 달콤한 감정. 로맨틱한 데이트 가능');
-          fortune.wealth.push('감정소비 위험, 선물·외식 지출 증가');
-          fortune.caution.push('우유부단, 감정적 결정 주의. 인간관계 스트레스 가능');
+          fortune.health.push('소화기관, 혈액순환 문제 주의');
+          fortune.move.push('가벼운 여행, 데이트 이동운 상승');
+          fortune.exam.push('팀 스터디, 협력 학습에 성과');
+          fortune.pass.push('커뮤니케이션 시험 합격률↑');
+          fortune.love.push('새로운 인연, 달콤한 감정');
+          fortune.wealth.push('감정 소비 늘어날 수 있음');
+          fortune.caution.push('우유부단, 감정적 결정에 주의');
           break;
 
         case 7: // 전차
-          fortune.health.push('무릎·발목 관절, 근육 긴장 주의. 과도한 운동은 피로 누적');
-          fortune.move.push('장거리 이동, 출장, 여행에 유리. 이동 중 새로운 기회 발견');
-          fortune.exam.push('짧은 기간 집중 공부 효과적. 속성학습 적합');
-          fortune.pass.push('도전적 성격의 시험에서 합격 기회. 실기나 현장형 시험도 좋음');
-          fortune.love.push('열정적인 구애, 이동 중 인연. 장거리 연애 시작 가능성');
-          fortune.wealth.push('새로운 거래·부수입 발생. 교통·통신비 지출 증가');
-          fortune.caution.push('서두르다 실수·사고. 물건 분실·파손 주의');
+          fortune.health.push('무릎·발목 관절, 근육 긴장 주의');
+          fortune.move.push('장거리 이동에서 좋은 기회');
+          fortune.exam.push('단기간 집중 학습 효과적');
+          fortune.pass.push('도전적 시험 합격 가능성↑');
+          fortune.love.push('열정적 구애, 장거리 연애 시작 가능');
+          fortune.wealth.push('새로운 거래, 교통비 증가');
+          fortune.caution.push('서두르다 실수·사고 조심');
           break;
 
         case 8: // 힘
-          fortune.health.push('근육·관절 과사용, 과도한 운동 주의. 체력은 좋으나 무리 금지');
-          fortune.move.push('열정적으로 이사·여행 추진 가능. 체력 필요한 이사에 적합');
-          fortune.exam.push('끈기와 집념으로 시험 합격 가능. 체력·정신력 시험에 강점');
-          fortune.pass.push('노력형 합격운. 꾸준히 준비한 사람에게 기회 옴');
-          fortune.love.push('열정적, 적극적 만남. 짙은 애정·강한 인연');
-          fortune.wealth.push('노력한 만큼 성과. 장기 투자에 좋음');
-          fortune.caution.push('고집, 자신감 과잉. 분노 조절 필요');
+          fortune.health.push('근육·관절 과사용 주의, 체력은 양호');
+          fortune.move.push('체력 필요한 이사·여행 유리');
+          fortune.exam.push('끈기·집념으로 합격 가능');
+          fortune.pass.push('꾸준히 노력한 자에게 기회');
+          fortune.love.push('열정적이고 강렬한 만남');
+          fortune.wealth.push('노력만큼 성과, 장기투자 유리');
+          fortune.caution.push('고집, 분노 조절 필요');
           break;
 
         case 9: // 은둔자
-          fortune.health.push('만성 피로나 우울감, 식욕 부진 등 심리적 문제 주의');
-          fortune.move.push('이동보다 정적 환경이 편안. 홀로 사색하는 시간 필요');
-          fortune.exam.push('독학·자습에 유리, 자기 페이스대로 준비 권장');
-          fortune.pass.push('결과가 늦어질 수 있으나, 내실 다지면 합격 가능');
-          fortune.love.push('고독을 원하거나 혼자만의 시간 필요. SNS 만남은 신중');
-          fortune.wealth.push('예상치 못한 지출, 비상금 확보 중요. 불확실 투자 삼가');
-          fortune.caution.push('오해나 구설, 사생활 노출 주의. 지나친 고립도 문제');
+          fortune.health.push('만성 피로, 우울감 주의');
+          fortune.move.push('정적인 환경이 편안');
+          fortune.exam.push('독학에 유리, 자기 페이스 권장');
+          fortune.pass.push('결과 지연 가능, 내실이 관건');
+          fortune.love.push('혼자만의 시간 필요');
+          fortune.wealth.push('예상치 못한 지출, 불확실 투자 금물');
+          fortune.caution.push('고립, 오해, 구설 주의');
           break;
 
         case 10: // 운명의 수레바퀴
-          fortune.health.push('혈압, 심장, 어지럼증 조심. 갑작스러운 컨디션 변화 가능');
-          fortune.move.push('예기치 못한 이동·변화. 인생 전환점 될 수 있음');
-          fortune.exam.push('갑자기 기회 나타나거나 시험 일자 변경 가능. 유연함 필요');
-          fortune.pass.push('과거 실패한 분야 재도전에 합격 운. 반전 기회');
-          fortune.love.push('운명적 만남·재회. 극적인 전환점');
-          fortune.wealth.push('수입·지출이 롤러코스터, 도박성 투자 주의');
-          fortune.caution.push('예상 못한 변화, 감정 기복 주의. 침착함이 중요');
+          fortune.health.push('혈압, 어지럼증, 갑작스런 컨디션 변화');
+          fortune.move.push('예상치 못한 이동·변화, 전환점');
+          fortune.exam.push('시험 일정 변경 가능, 유연성 필요');
+          fortune.pass.push('과거 실패 재도전에 유리');
+          fortune.love.push('운명적 만남·재회');
+          fortune.wealth.push('수입·지출 롤러코스터');
+          fortune.caution.push('갑작스런 변화, 침착함 필요');
           break;
 
         case 11: // 정의
-          fortune.health.push('목·어깨 통증, 스트레스성 두통, 불면. 자세 교정 필요');
-          fortune.move.push('계약·문서·법적 문제로 이동 발생 가능');
-          fortune.exam.push('법, 행정, 윤리 등 공정성 시험에 강세');
-          fortune.pass.push('서류, 계약 꼼꼼히 하면 합격 가능');
-          fortune.love.push('이성적·공정한 태도가 필요한 관계. 감정보다 논리적 접근');
-          fortune.wealth.push('계약·합의로 금전 거래 발생, 꼼꼼한 검토 필수');
-          fortune.caution.push('법적 분쟁·분쟁 휘말릴 수 있음. 오해, 서류 실수 주의');
+          fortune.health.push('목·어깨 통증, 불면, 자세 교정 필요');
+          fortune.move.push('계약·법적 문제로 이동 발생 가능');
+          fortune.exam.push('법·행정·공정성 시험 운');
+          fortune.pass.push('서류 꼼꼼히 하면 합격 가능');
+          fortune.love.push('이성적·공정한 관계 중시');
+          fortune.wealth.push('금전 거래, 합의 신중 검토');
+          fortune.caution.push('법적 분쟁, 오해 주의');
           break;
 
         case 12: // 매달린 사람
-          fortune.health.push('허리, 척추, 호흡기 질환. 지연·정체 현상 있을 수 있음');
-          fortune.move.push('이동이 지연되거나 취소될 수 있음. 인내심 필요');
-          fortune.exam.push('시험 대비 시간이 더 필요. 노력 대비 늦은 성과');
-          fortune.pass.push('합격 소식 늦어짐, 희생이나 인내 필수');
-          fortune.love.push('상대를 위해 헌신·양보해야 할 상황. 짝사랑 가능');
-          fortune.wealth.push('예상보다 많은 지출, 투자나 재테크도 답보 상태');
-          fortune.caution.push('결정 지연, 일의 진행 느림. 성급함 금물');
+          fortune.health.push('허리·척추·호흡기 질환 주의');
+          fortune.move.push('이동 지연·취소 가능, 인내 필요');
+          fortune.exam.push('더 많은 준비시간 필요');
+          fortune.pass.push('결과 지연, 희생·인내가 관건');
+          fortune.love.push('한쪽 헌신, 짝사랑 상황 가능');
+          fortune.wealth.push('재테크 답보, 지출 많음');
+          fortune.caution.push('진행 느림, 성급함 금물');
           break;
 
         case 13: // 죽음
-          fortune.health.push('급성 질환, 사고 위험. 면역력 급격히 떨어질 수 있음');
-          fortune.move.push('큰 변화 수반한 이사·이직 가능성. 과감한 결단 필요');
-          fortune.exam.push('기존 계획 포기 후 새로운 길 찾으면 오히려 성과');
-          fortune.pass.push('수술·의료 등 극적인 분야에서 합격 기운');
-          fortune.love.push('관계 급변, 이별·재정비. 새로운 시작 위한 청산');
-          fortune.wealth.push('큰 금액 이동, 예상치 못한 손실 가능. 신중한 관리 필요');
-          fortune.caution.push('급격한 변화, 안전 주의. 대인관계 단절 유의');
+          fortune.health.push('급성 질환, 사고 위험, 면역력 하락');
+          fortune.move.push('큰 변화 동반 이사·이직 가능');
+          fortune.exam.push('기존 계획 포기 후 새로운 길 모색');
+          fortune.pass.push('의료·수술 등 극적 분야 합격 운');
+          fortune.love.push('관계 정리, 새로운 출발');
+          fortune.wealth.push('큰 금액 이동, 손실 주의');
+          fortune.caution.push('급격한 변화, 대인관계 단절 주의');
           break;
 
         case 14: // 절제
-          fortune.health.push('규칙적 생활로 컨디션 회복, 식습관 개선 도움');
-          fortune.move.push('천천히 준비된 이동이 길함. 무리한 일정 피하기');
-          fortune.exam.push('꾸준한 학습·점진적 실력 향상으로 합격 가능');
-          fortune.pass.push('차분히 준비하면 최종 합격, 안정된 결과');
-          fortune.love.push('차분하고 진중한 연애, 서로 배려 깊어짐');
-          fortune.wealth.push('안정적·꾸준한 수입, 무리 없는 저축 추천');
-          fortune.caution.push('과한 욕심, 집착 주의. 균형 유지가 핵심');
+          fortune.health.push('규칙적 생활 습관으로 컨디션 회복');
+          fortune.move.push('무리 없는 이동 준비가 필요');
+          fortune.exam.push('꾸준한 학습, 점진적 실력 향상');
+          fortune.pass.push('차분히 준비하면 안정적 합격');
+          fortune.love.push('서로 배려하는 차분한 사랑');
+          fortune.wealth.push('안정적 저축·투자 유리');
+          fortune.caution.push('과욕, 집착 주의');
           break;
 
         case 15: // 악마
-          fortune.health.push('중독성 질환, 스트레스성 불면, 과로로 인한 무기력');
-          fortune.move.push('유혹성 이동(도박, 음주 등)에 빠질 위험. 자제 필요');
-          fortune.exam.push('부정행위나 편법 유혹 경계. 시험 집중 어려움');
-          fortune.pass.push('불건전 방법은 결국 악영향. 정당 노력 필요');
-          fortune.love.push('부적절한 관계, 불륜 유혹. 유혹이 강하지만 결과 위험');
-          fortune.wealth.push('사기·금전 피해 가능성. 충동적 소비, 도박 투자 주의');
-          fortune.caution.push('유혹, 악의적 제안, 중독 조심. 건전한 태도 유지 필수');
+          fortune.health.push('중독성 질환, 스트레스성 무기력 주의');
+          fortune.move.push('도박·음주 등 유혹성 이동 위험');
+          fortune.exam.push('부정행위 유혹, 편법 주의');
+          fortune.pass.push('불건전 방법은 결국 악영향');
+          fortune.love.push('부적절 관계, 불륜 유혹 가능');
+          fortune.wealth.push('사기·금전 피해 주의');
+          fortune.caution.push('유혹·중독·악의적 제안 경계');
           break;
 
         case 16: // 탑
-          fortune.health.push('갑작스러운 부상, 사고, 급성 질환. 스트레스 극도화');
-          fortune.move.push('예상치 못한 상황으로 이동(이사, 퇴사 등). 준비 부족 위험');
-          fortune.exam.push('기존 시험 계획 붕괴, 재정비 필수. 원점 재검토');
-          fortune.pass.push('갑작스런 변수로 시험 실패 후 재기 가능성');
-          fortune.love.push('충격적 이별, 느닷없는 변화. 위기이자 기회');
-          fortune.wealth.push('큰 지출, 투자 붕괴. 금전 손실 크므로 안전 관리 필수');
-          fortune.caution.push('돌발 사고, 계획 변경, 인간관계 균열 주의');
+          fortune.health.push('갑작스런 부상, 사고 위험, 스트레스↑');
+          fortune.move.push('이사·퇴사 등 돌발 이동 가능');
+          fortune.exam.push('기존 계획 붕괴, 재정비 필수');
+          fortune.pass.push('돌발 변수로 실패 후 재기 가능');
+          fortune.love.push('충격적 이별, 갑작스런 변화');
+          fortune.wealth.push('큰 손실 위험, 투자 신중');
+          fortune.caution.push('돌발 사고, 인간관계 균열 주의');
           break;
 
         case 17: // 별
-          fortune.health.push('전반적 건강 호전, 피부·외모 관리에 최적');
-          fortune.move.push('낭만적 여행, 힐링 이동에 행운. 이상과 현실 조율 필요');
-          fortune.exam.push('창의성·예술성 시험에서 돋보임. 아이디어 풍부');
-          fortune.pass.push('뜻밖의 합격 소식, 희망적 결과');
-          fortune.love.push('낭만적이고 달콤한 사랑. 환상적 분위기');
-          fortune.wealth.push('뜻밖의 금전 행운, 복권 당첨 가능성');
-          fortune.caution.push('비현실적 기대, 과도한 낙관으로 인한 실수 주의');
+          fortune.health.push('전반적 건강 호전, 피부·외모 관리 유리');
+          fortune.move.push('낭만적 여행, 힐링 이동에 좋음');
+          fortune.exam.push('예술·아이디어 시험에서 돋보임');
+          fortune.pass.push('뜻밖의 합격, 희망적 결과');
+          fortune.love.push('낭만적이고 환상적인 만남');
+          fortune.wealth.push('의외의 금전 행운 가능');
+          fortune.caution.push('비현실적 기대, 과도한 낙관 금물');
           break;
 
         case 18: // 달
-          fortune.health.push('불면증, 우울감, 호르몬 불균형. 밤 시간대 주의');
-          fortune.move.push('야간 이동, 여행은 안전사고 유의');
-          fortune.exam.push('직감·촉 활용할 수 있으나 현실 검증 필요');
-          fortune.pass.push('착각·잘못된 정보로 무리한 지원하면 낭패');
-          fortune.love.push('감정 기복·착각·비밀 드러날 수 있음');
-          fortune.wealth.push('불확실 정보로 손실 위험, 사기성 투자 경계');
-          fortune.caution.push('거짓말·과도한 감정, 환상 주의');
+          fortune.health.push('불면·우울, 호르몬 불균형 주의');
+          fortune.move.push('야간 이동 시 사고 주의');
+          fortune.exam.push('직감에 의존 말고 현실 검증 필수');
+          fortune.pass.push('잘못된 정보로 무리한 지원 금물');
+          fortune.love.push('감정 기복, 비밀 드러날 수 있음');
+          fortune.wealth.push('불확실 투자, 사기 위험');
+          fortune.caution.push('거짓, 환상, 착각 주의');
           break;
 
         case 19: // 태양
-          fortune.health.push('전반적 건강 양호, 면역력↑. 야외활동에 기쁨');
-          fortune.move.push('여행·축제 등 이벤트성 이동에 즐거움');
-          fortune.exam.push('자신감 넘쳐 시험도 순조, 실수만 주의');
-          fortune.pass.push('합격 가능성 높음. 기쁨 충만');
-          fortune.love.push('당당·활기찬 연애 성공. 매력 발산↑');
-          fortune.wealth.push('능력 인정, 승진·성과금 등 수익 증가');
-          fortune.caution.push('자만심, 과신 주의. 주변 시기·질투 유의');
+          fortune.health.push('면역력↑, 전반적 건강 호조');
+          fortune.move.push('여행·축제 등 이벤트 이동에 즐거움');
+          fortune.exam.push('자신감 높아 시험 순조, 실수만 주의');
+          fortune.pass.push('합격 가능성 매우 높음');
+          fortune.love.push('밝고 활기찬 연애, 인기 상승');
+          fortune.wealth.push('성과금, 승진 등 수익 증가');
+          fortune.caution.push('자만심, 주변 질투 주의');
           break;
 
         case 20: // 심판
-          fortune.health.push('만성 질환 재발, 과거 증상 주의. 건강 점검 필요');
-          fortune.move.push('과거 문제 해결 위한 이동, 결말 지어질 수 있음');
-          fortune.exam.push('재시험, 과거 실패 극복에 강한 운');
-          fortune.pass.push('과거 불합격 재도전 합격 가능성 높음');
-          fortune.love.push('옛 인연 재회, 관계 회복 또는 최종 결정');
-          fortune.wealth.push('과거 투자 결과가 나타남. 오래된 빚 해결 가능');
-          fortune.caution.push('과거사 다시 문제화, 책임 감수');
+          fortune.health.push('과거 질환 재발 주의, 건강 점검 필요');
+          fortune.move.push('과거 문제 해결 위한 이동, 결말 가능');
+          fortune.exam.push('재시험, 과거 실패 극복에 유리');
+          fortune.pass.push('불합격 후 재도전 합격 가능성↑');
+          fortune.love.push('옛 인연 재회, 관계 회복 또는 종결');
+          fortune.wealth.push('오래된 빚 정리, 과거 투자 결실');
+          fortune.caution.push('과거사 재점화, 책임 감수');
           break;
 
         case 21: // 세계
-          fortune.health.push('만성질환 치유, 해외활동에 긍정적. 전반적 건강 개선');
-          fortune.move.push('해외나 장거리 이동운 상승, 큰 프로젝트 출장에 유리');
-          fortune.exam.push('최종단계 시험운, 완성된 역량 발휘');
-          fortune.pass.push('원하던 목표 합격, 국제·전문 분야 성과');
-          fortune.love.push('안정적·완성된 사랑, 장거리 연애나 국제결혼도 가능');
-          fortune.wealth.push('프로젝트 성공, 큰 재물 성취. 목표 달성 시 보상 큼');
-          fortune.caution.push('해외 이동시 안전·컨디션 관리, 무리한 욕심 자제');
+          fortune.health.push('만성 질환 치유, 해외활동 유리');
+          fortune.move.push('해외·장거리 이동에 행운');
+          fortune.exam.push('최종단계 시험 운, 능력 완성도↑');
+          fortune.pass.push('큰 목표 합격, 국제분야 성과');
+          fortune.love.push('안정적·완성된 사랑, 국제결혼 가능');
+          fortune.wealth.push('프로젝트 성공, 큰 보상 가능');
+          fortune.caution.push('해외 이동 시 안전·컨디션 관리');
           break;
 
         default:
@@ -379,11 +426,12 @@
     }
 
     /************************************************************
-     * 두 숫자(A,B) 운세 합치기
+     * A, B 각각의 풀이(0~21) 합치기
      ************************************************************/
     function mergeFortunes(a, b) {
       const fA = getFortuneByNumber(a);
       const fB = getFortuneByNumber(b);
+
       return {
         health:  [...fA.health,  ...fB.health ],
         move:    [...fA.move,    ...fB.move   ],
@@ -392,28 +440,80 @@
         love:    [...fA.love,    ...fB.love   ],
         wealth:  [...fA.wealth,  ...fB.wealth ],
         caution: [...fA.caution, ...fB.caution],
+        // powerful 여부는 여기서 false로 세팅, 이후 외부에서 필요 시 수정
         powerful: false
       };
     }
 
     /************************************************************
+     * Chart 컴포넌트: 일자별 점수 (A/B 표 기반)
+     ************************************************************/
+    const FortuneChart = ({ dailyFortunes, targetYear, targetMonth }) => {
+      const chartRef = React.useRef(null);
+      const chartInstanceRef = React.useRef(null);
+
+      React.useEffect(() => {
+        if (chartInstanceRef.current) {
+          chartInstanceRef.current.destroy();
+        }
+
+        // x축: day (1 ~ 말일), y축: score
+        const days = Object.keys(dailyFortunes).map(d => parseInt(d, 10)).sort((a,b)=>a-b);
+        const scores = days.map(day => dailyFortunes[day].score);
+
+        const ctx = chartRef.current.getContext('2d');
+        chartInstanceRef.current = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: days,
+            datasets: [{
+              label: '일별 점수',
+              data: scores,
+              fill: false,
+              borderColor: 'rgb(75, 192, 192)',
+              tension: 0.2
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                suggestedMax: 100
+              }
+            },
+            plugins: {
+              legend: {
+                display: true
+              }
+            }
+          }
+        });
+
+        return () => {
+          if (chartInstanceRef.current) {
+            chartInstanceRef.current.destroy();
+          }
+        };
+      }, [dailyFortunes]);
+
+      return (
+        <div className="mt-6">
+          <h3 className="text-base font-semibold mb-2">
+            {targetYear}년 {targetMonth}월 곡선 그래프 (A/B 표 점수)
+          </h3>
+          <canvas ref={chartRef} width="400" height="200"></canvas>
+        </div>
+      );
+    };
+
+    /************************************************************
      * 메인 App
      ************************************************************/
     function App() {
-      // 입력 상태
+      // 입력
       const [name, setName] = React.useState('');
-
-      // 양력 입력
-      const [solarYear, setSolarYear] = React.useState('');
-      const [solarMonth, setSolarMonth] = React.useState('');
-      const [solarDay, setSolarDay] = React.useState('');
-
-      // 음력 입력
-      const [lunarYear, setLunarYear] = React.useState('');
-      const [lunarMonth, setLunarMonth] = React.useState('');
-      const [lunarDay, setLunarDay] = React.useState('');
-
-      // 년/월
+      const [solarBirth, setSolarBirth] = React.useState('');
+      const [lunarBirth, setLunarBirth] = React.useState('');
       const [targetYear, setTargetYear] = React.useState('2025');
       const [targetMonth, setTargetMonth] = React.useState('');
 
@@ -423,82 +523,94 @@
       const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!name.trim()) {
-          alert('이름을 입력하세요.');
-          return;
-        }
         if (!targetYear || !targetMonth) {
-          alert('보고 싶은 년, 월을 모두 입력하세요.');
+          alert('보고 싶은 연도, 월을 모두 입력하세요.');
           return;
         }
 
-        // 1) 사주번호 (이름 -> 숫자)
-        const saju = calculateNameNumbers(name);
+        // (1) 이름 → 사주번호
+        const sajuNums = calculateNameNumbers(name);
 
-        // 2) 양력 해운 => "A/B"
+        // 양력 해운
         let birthHaeunSolar = null;
         let solarNumbers = [];
-        if (solarYear && solarMonth && solarDay) {
-          birthHaeunSolar = calculateHaeun(solarYear, solarMonth, solarDay);
+        if (solarBirth.length === 8) {
+          const y = solarBirth.substring(0,4);
+          const m = solarBirth.substring(4,6);
+          const d = solarBirth.substring(6,8);
+          birthHaeunSolar = calculateHaeun(y, m, d); // "A/B"
           const [sA, sB] = birthHaeunSolar.split('/');
-          solarNumbers = [parseInt(sA, 10), parseInt(sB, 10)];
+          solarNumbers = [parseInt(sA,10), parseInt(sB,10)];
         }
 
-        // 2) 음력 해운 => "A/B"
+        // 음력 해운
         let birthHaeunLunar = null;
         let lunarNumbers = [];
-        if (lunarYear && lunarMonth && lunarDay) {
-          birthHaeunLunar = calculateHaeun(lunarYear, lunarMonth, lunarDay);
+        if (lunarBirth.length === 8) {
+          const y = lunarBirth.substring(0,4);
+          const m = lunarBirth.substring(4,6);
+          const d = lunarBirth.substring(6,8);
+          birthHaeunLunar = calculateHaeun(y, m, d); // "A/B"
           const [lA, lB] = birthHaeunLunar.split('/');
-          lunarNumbers = [parseInt(lA, 10), parseInt(lB, 10)];
+          lunarNumbers = [parseInt(lA,10), parseInt(lB,10)];
         }
 
-        // 3) 강력한 숫자 세트 = 사주번호 + 양력(A,B) + 음력(A,B)
-        const combined = [...saju, ...solarNumbers, ...lunarNumbers];
-        const userStrongSet = [...new Set(combined)].sort((a,b) => a-b);
+        // "강력한 기운" 숫자 세트 = 사주번호 + 양력 해운 + 음력 해운
+        const combined = [...sajuNums, ...solarNumbers, ...lunarNumbers];
+        const userStrongSet = [...new Set(combined)].sort((a,b)=>a-b);
 
-        // 4) targetYear, targetMonth -> 일수
+        // (2) 월별 일수
         const yearNum = parseInt(targetYear, 10);
         const monthNum = parseInt(targetMonth, 10);
         const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
 
-        // 5) 각 날짜별 운세
-        const dailyFortunes = {};
+        // (3) 일별 계산
+        const dailyFortunes = {};  // { day: { ab, score, detail } }
         let powerfulDays = [];
 
-        for (let day = 1; day <= daysInMonth; day++) {
-          const haeun = calculateHaeun(yearNum, monthNum, day); // "A/B"
-          const [strA, strB] = haeun.split('/');
+        for (let day=1; day <= daysInMonth; day++) {
+          // A/B
+          const ab = calculateHaeun(yearNum, monthNum, day); // "A/B"
+          const [strA, strB] = ab.split('/');
           const A = parseInt(strA, 10);
           const B = parseInt(strB, 10);
 
-          const dayFortune = mergeFortunes(A, B);
+          // 3-1) "풀이" 구하기
+          let dayFortune = mergeFortunes(A, B);
 
-          // 강력한 기운 체크
+          // 3-2) '강력한 기운' 체크
           if (userStrongSet.includes(A) || userStrongSet.includes(B)) {
             dayFortune.powerful = true;
             powerfulDays.push(day);
           }
 
+          // 3-3) 점수: customScoreTable[ab] 있으면 그 값, 없으면 50
+          let score = customScoreTable[ab];
+          if (score === undefined) {
+            score = 50;
+          }
+
+          // 하나로 저장
           dailyFortunes[day] = {
-            haeun,
-            ...dayFortune
+            ab,
+            score,
+            detail: dayFortune
           };
         }
 
-        // 6) 요약
+        // (4) 월간 요약
         let monthlySummary = '';
         if (powerfulDays.length === 0) {
           monthlySummary = `이번 달(${targetYear}.${targetMonth})에는 강력한 기운이 감지되지 않았습니다.\n잔잔하고 안정적인 시기를 보내기 좋습니다.`;
         } else {
-          monthlySummary = 
+          monthlySummary =
             `이번 달(${targetYear}.${targetMonth})에는 총 ${powerfulDays.length}번의 강력한 기운이 감지되었습니다!\n` +
-            `[${powerfulDays.join(', ')}일]에 주목하세요. 중요한 결정이나 행동에 도움이 될 수 있습니다.`;
+            `[${powerfulDays.join(', ')}일] 주목! 중요한 결정이나 행동에 도움이 될 수 있습니다.`;
         }
 
-        // 7) 결과 저장
+        // (5) 상태 저장
         setFortune({
-          saju,
+          sajuNums,
           birthHaeunSolar,
           birthHaeunLunar,
           userStrongSet,
@@ -511,15 +623,18 @@
 
       return (
         <div className="space-y-8">
+          {/* 상단 안내 */}
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl sm:text-3xl">
-                수비학 상세 월별 운세
+                해운(A/B)별 점수 & 일별 풀이 + 그래프
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm sm:text-base text-slate-700">
-                이름, 생년월일 양력, 음력을 입력하시면 상세한 일별, 월별운세를 알 수 있습니다.
+                - (년+월+일) 해운 A/B를 구하고,<br/>
+                - 질문에서 주신 4개 순환 점수표로 A/B→점수를 매긴 뒤,<br/>
+                - 0~21번 "풀이 내용"도 함께 표시합니다.
               </p>
             </CardContent>
           </Card>
@@ -538,107 +653,64 @@
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    placeholder="이름 입력"
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring"
+                    placeholder="이름"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    * 강력한 숫자(사주번호) 체크에 사용됩니다.
+                  </p>
+                </div>
+
+                {/* 양력 (YYYYMMDD) */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1">
+                    생년월일 (양력, 예: 19790422)
+                  </label>
+                  <input
+                    type="number"
+                    value={solarBirth}
+                    onChange={(e) => setSolarBirth(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring"
+                    placeholder="YYYYMMDD"
                   />
                 </div>
 
-                {/* 양력 생년월일 */}
+                {/* 음력 (YYYYMMDD) */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">
-                    생년월일 (양력)
+                  <label className="block text-sm font-semibold mb-1">
+                    생년월일 (음력, 선택)
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="number"
-                      value={solarYear}
-                      onChange={(e) => setSolarYear(e.target.value)}
-                      placeholder="연(YYYY)"
-                      className="p-2 border border-gray-300 rounded"
-                    />
-                    <input
-                      type="number"
-                      value={solarMonth}
-                      onChange={(e) => setSolarMonth(e.target.value)}
-                      placeholder="월(MM)"
-                      min="1"
-                      max="12"
-                      className="p-2 border border-gray-300 rounded"
-                    />
-                    <input
-                      type="number"
-                      value={solarDay}
-                      onChange={(e) => setSolarDay(e.target.value)}
-                      placeholder="일(DD)"
-                      min="1"
-                      max="31"
-                      className="p-2 border border-gray-300 rounded"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    * 양력을 입력할 경우만 사용. (미입력 시 생략 가능)
-                  </p>
+                  <input
+                    type="number"
+                    value={lunarBirth}
+                    onChange={(e) => setLunarBirth(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring"
+                    placeholder="YYYYMMDD"
+                  />
                 </div>
 
-                {/* 음력 생년월일 */}
-                <div>
-                  <label className="block text-sm font-semibold mb-2">
-                    생년월일 (음력)
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="number"
-                      value={lunarYear}
-                      onChange={(e) => setLunarYear(e.target.value)}
-                      placeholder="연(YYYY)"
-                      className="p-2 border border-gray-300 rounded"
-                    />
-                    <input
-                      type="number"
-                      value={lunarMonth}
-                      onChange={(e) => setLunarMonth(e.target.value)}
-                      placeholder="월(MM)"
-                      min="1"
-                      max="12"
-                      className="p-2 border border-gray-300 rounded"
-                    />
-                    <input
-                      type="number"
-                      value={lunarDay}
-                      onChange={(e) => setLunarDay(e.target.value)}
-                      placeholder="일(DD)"
-                      min="1"
-                      max="31"
-                      className="p-2 border border-gray-300 rounded"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    * 음력을 입력할 경우만 사용. (미입력 시 생략 가능)
-                  </p>
-                </div>
-
-                {/* 원하는 년/월 */}
+                {/* 보고 싶은 년/월 */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-sm font-semibold mb-1">보고 싶은 년도</label>
+                    <label className="block text-sm font-semibold mb-1">년(YYYY)</label>
                     <input
                       type="number"
                       value={targetYear}
                       onChange={(e) => setTargetYear(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring"
                       placeholder="예: 2025"
-                      className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1">보고 싶은 월</label>
+                    <label className="block text-sm font-semibold mb-1">월(MM)</label>
                     <input
                       type="number"
                       value={targetMonth}
                       onChange={(e) => setTargetMonth(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring"
                       placeholder="예: 4"
                       min="1"
                       max="12"
-                      className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
                     />
                   </div>
                 </div>
@@ -653,17 +725,23 @@
             </CardContent>
           </Card>
 
-          {/* 결과 */}
+          {/* 결과 표시 */}
           {fortune && (
             <Card>
               <CardHeader>
                 <CardTitle>운세 결과</CardTitle>
               </CardHeader>
               <CardContent>
-                {/* 사주번호 & 출생 해운 */}
-                <div className="mb-4 text-sm space-y-1">
+                {/* 차트: 일자별 점수 */}
+                <FortuneChart
+                  dailyFortunes={fortune.dailyFortunes}
+                  targetYear={fortune.targetYear}
+                  targetMonth={fortune.targetMonth}
+                />
+
+                <div className="mt-6 mb-4 text-sm space-y-1">
                   <p>
-                    <strong>사주 번호:</strong> {fortune.saju.join(', ')}
+                    <strong>사주 번호:</strong> {fortune.sajuNums.join(', ') || '(없음)'}
                   </p>
                   {fortune.birthHaeunSolar && (
                     <p>
@@ -676,7 +754,11 @@
                     </p>
                   )}
                   <p>
-                    <strong>강력한 숫자 세트:</strong> {fortune.userStrongSet.join(', ')}
+                    <strong>강력한 숫자 세트:</strong>{' '}
+                    {fortune.userStrongSet.length
+                      ? fortune.userStrongSet.join(', ')
+                      : '(없음)'
+                    }
                   </p>
                 </div>
 
@@ -687,13 +769,15 @@
                   </p>
                 </div>
 
-                {/* 일일 운세 */}
                 <h3 className="text-base font-semibold mb-3">
-                  {fortune.targetYear}년 {fortune.targetMonth}월 일일 운세
+                  {fortune.targetYear}년 {fortune.targetMonth}월 일별 운세 & 점수
                 </h3>
+
+                {/* 일자별 카드 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(fortune.dailyFortunes).map(([day, f]) => {
-                    const cardClass = f.powerful
+                  {Object.entries(fortune.dailyFortunes).map(([day, info]) => {
+                    const { ab, score, detail } = info;
+                    const cardClass = detail.powerful
                       ? "bg-orange-50 border-orange-300"
                       : "bg-white border-gray-200";
 
@@ -702,80 +786,88 @@
                         <h4 className="text-sm font-semibold text-slate-800 mb-1">
                           {fortune.targetYear}년 {fortune.targetMonth}월 {day}일
                         </h4>
-                        <p className="text-xs text-gray-500">해운: {f.haeun}</p>
-                        {f.powerful && (
+                        <p className="text-xs text-gray-500">해운: {ab}</p>
+                        {detail.powerful && (
                           <p className="text-xs text-red-600 font-bold mt-1">
                             ※ 강력한 기운!
                           </p>
                         )}
 
+                        {/* 표 점수 */}
+                        <p className="text-xs text-blue-600 mt-1">
+                          점수: <strong>{score}</strong> / 100
+                        </p>
+
+                        {/* 상세 풀이 */}
                         {/* 건강운 */}
-                        {f.health.length > 0 && (
+                        {detail.health.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-blue-600 mb-1">건강운</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.health.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.health.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
                         {/* 이동운 */}
-                        {f.move.length > 0 && (
+                        {detail.move.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-green-600 mb-1">이동운</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.move.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.move.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
                         {/* 시험운 */}
-                        {f.exam.length > 0 && (
+                        {detail.exam.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-indigo-600 mb-1">시험운</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.exam.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.exam.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
                         {/* 합격운 */}
-                        {f.pass.length > 0 && (
+                        {detail.pass.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-purple-600 mb-1">합격운</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.pass.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.pass.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
                         {/* 애정운 */}
-                        {f.love.length > 0 && (
+                        {detail.love.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-pink-600 mb-1">애정운</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.love.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.love.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
                         {/* 재물운 */}
-                        {f.wealth.length > 0 && (
+                        {detail.wealth.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-yellow-600 mb-1">재물운</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.wealth.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.wealth.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
                         {/* 주의사항 */}
-                        {f.caution.length > 0 && (
+                        {detail.caution.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-semibold text-red-600 mb-1">주의사항</p>
                             <ul className="pl-4 list-disc text-xs text-slate-700 space-y-1">
-                              {f.caution.map((item,i)=><li key={i}>{item}</li>)}
+                              {detail.caution.map((item, i) => <li key={i}>{item}</li>)}
                             </ul>
                           </div>
                         )}
+
                       </div>
                     );
                   })}
                 </div>
+
               </CardContent>
             </Card>
           )}
